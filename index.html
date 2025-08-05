@@ -1,0 +1,297 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Details Entry</title>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.22.10/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        function App() {
+            const blocks = [
+                'Achabal', 'Anantnag', 'Bijbehara', 'Breng', 'Chittergul', 'D. Pora', 
+                'Hiller', 'K. Pora', 'Larnoo', 'Pahalgam', 'Qazigund', 'Sagam', 
+                'Shahabad', 'Shangus', 'Verinag', 'Vessu'
+            ];
+            const eventNumbers = Array.from({length: 16}, (_, i) => i);
+            const ADMIN_PASSWORD = '7894Zee'; // Temporary client-side, will move to server
+
+            const [formData, setFormData] = React.useState({
+                block: blocks[0],
+                events: 0,
+                remarks: ''
+            });
+            const [savedData, setSavedData] = React.useState([]);
+            const [error, setError] = React.useState(null);
+            const [isAdmin, setIsAdmin] = React.useState(false);
+            const [passwordInput, setPasswordInput] = React.useState('');
+
+            // Load data from localStorage on mount
+            React.useEffect(() => {
+                const saved = localStorage.getItem('eventData');
+                if (saved) {
+                    setSavedData(JSON.parse(saved));
+                    console.log('Data loaded from localStorage:', JSON.parse(saved));
+                }
+            }, []);
+
+            // Save data to localStorage
+            React.useEffect(() => {
+                if (savedData.length > 0) {
+                    localStorage.setItem('eventData', JSON.stringify(savedData));
+                    console.log('Data saved to localStorage:', savedData);
+                }
+            }, [savedData]);
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                console.log(`Input changed: ${name} = ${value}`);
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handlePasswordChange = (e) => {
+                setPasswordInput(e.target.value);
+            };
+
+            const handleAdminLogin = () => {
+                if (passwordInput === ADMIN_PASSWORD) {
+                    setIsAdmin(true);
+                    setError(null);
+                    setPasswordInput('');
+                    console.log('Admin login successful');
+                } else {
+                    setError('Incorrect password. Please try again.');
+                    console.log('Admin login failed');
+                }
+            };
+
+            const handleSave = () => {
+                if (savedData.some(item => item.block === formData.block)) {
+                    setError(`Data for block ${formData.block} already exists`);
+                    console.log('Save blocked: Block already exists:', formData.block);
+                    return;
+                }
+                setSavedData([...savedData, formData]);
+                setFormData({
+                    block: blocks[0],
+                    events: 0,
+                    remarks: ''
+                });
+                setError(null);
+                console.log('Data saved:', formData);
+            };
+
+            const handleClearData = () => {
+                if (passwordInput !== ADMIN_PASSWORD) {
+                    setError('Incorrect password for clearing data.');
+                    return;
+                }
+                setSavedData([]);
+                localStorage.removeItem('eventData');
+                setError('All data cleared successfully.');
+                console.log('Data cleared');
+            };
+
+            const handleDownload = () => {
+                if (passwordInput !== ADMIN_PASSWORD) {
+                    setError('Incorrect password for downloading CSV.');
+                    return;
+                }
+                if (savedData.length === 0) {
+                    setError('No data to download.');
+                    return;
+                }
+                const csvContent = [
+                    'Block,Number of Events,Remarks',
+                    ...savedData.map(item => 
+                        `${item.block},${item.events},"${item.remarks.replace(/"/g, '""')}"`
+                    )
+                ].join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'event_details.csv');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setError('CSV downloaded. Please manually email to nopacdang@gmail.com.');
+                console.log('CSV downloaded');
+            };
+
+            return (
+                <div className="container mx-auto p-4 max-w-2xl">
+                    <h1 className="text-2xl font-bold mb-4">Event Details Entry</h1>
+                    
+                    {error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">Block</label>
+                        <select 
+                            name="block"
+                            value={formData.block}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        >
+                            {blocks.map(block => (
+                                <option key={block} value={block}>{block}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">Number of Events</label>
+                        <select 
+                            name="events"
+                            value={formData.events}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        >
+                            {eventNumbers.map(num => (
+                                <option key={num} value={num}>{num}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">Remarks</label>
+                        <textarea
+                            name="remarks"
+                            value={formData.remarks}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                            rows="4"
+                        ></textarea>
+                    </div>
+
+                    <button
+                        onClick={handleSave}
+                        className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
+                    >
+                        Save
+                    </button>
+
+                    {savedData.length > 0 && (
+                        <div>
+                            <h2 className="text-xl font-semibold mb-2">Saved Data</h2>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Block</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Events</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {savedData.map((item, index) => (
+                                            <tr key={index}>
+                                                <td className="px-6 py-4 whitespace-nowrap">{item.block}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap">{item.events}</td>
+                                                <td className="px-6 py-4">{item.remarks}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {!isAdmin && (
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700">Admin Password</label>
+                                    <input
+                                        type="password"
+                                        value={passwordInput}
+                                        onChange={handlePasswordChange}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                        placeholder="Enter admin password"
+                                    />
+                                    <button
+                                        onClick={handleAdminLogin}
+                                        className="w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mt-2"
+                                    >
+                                        Login as Admin
+                                    </button>
+                                </div>
+                            )}
+
+                            {isAdmin && (
+                                <div className="mt-4 space-y-2">
+                                    <button
+                                        onClick={handleDownload}
+                                        className="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                                    >
+                                        Download CSV and Email
+                                    </button>
+                                    <button
+                                        onClick={handleClearData}
+                                        className="w-full bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                                    >
+                                        Clear All Data
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        try {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
+            console.log('React app rendered successfully');
+        } catch (err) {
+            console.error('Render error:', err);
+            document.getElementById('root').innerHTML = '<div className="text-red-500 p-4">Error loading application. Please check console for details.</div>';
+        }
+    </script>
+</body>
+</html>
