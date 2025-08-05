@@ -58,7 +58,7 @@
                 'Shahabad', 'Shangus', 'Verinag', 'Vessu'
             ];
             const eventNumbers = Array.from({length: 16}, (_, i) => i);
-            const ADMIN_PASSWORD = '7894Zee'; // Temporary client-side, will move to server
+            const ADMIN_PASSWORD = '7894Zee';
 
             const [formData, setFormData] = React.useState({
                 block: blocks[0],
@@ -101,7 +101,6 @@
                 if (passwordInput === ADMIN_PASSWORD) {
                     setIsAdmin(true);
                     setError(null);
-                    setPasswordInput('');
                     console.log('Admin login successful');
                 } else {
                     setError('Incorrect password. Please try again.');
@@ -134,6 +133,7 @@
                 localStorage.removeItem('eventData');
                 setError('All data cleared successfully.');
                 console.log('Data cleared');
+                setPasswordInput(''); // Clear password input after action
             };
 
             const handleDownload = () => {
@@ -161,6 +161,7 @@
                 document.body.removeChild(link);
                 setError('CSV downloaded. Please manually email to nopacdang@gmail.com.');
                 console.log('CSV downloaded');
+                setPasswordInput(''); // Clear password input after action
             };
 
             return (
@@ -243,24 +244,24 @@
                                 </table>
                             </div>
 
-                            {!isAdmin && (
-                                <div className="mt-4">
-                                    <label className="block text-sm font-medium text-gray-700">Admin Password</label>
-                                    <input
-                                        type="password"
-                                        value={passwordInput}
-                                        onChange={handlePasswordChange}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                        placeholder="Enter admin password"
-                                    />
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700">Admin Password</label>
+                                <input
+                                    type="password"
+                                    value={passwordInput}
+                                    onChange={handlePasswordChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                    placeholder="Enter admin password"
+                                />
+                                {!isAdmin && (
                                     <button
                                         onClick={handleAdminLogin}
                                         className="w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mt-2"
                                     >
                                         Login as Admin
                                     </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             {isAdmin && (
                                 <div className="mt-4 space-y-2">
