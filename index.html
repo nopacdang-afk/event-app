@@ -163,11 +163,13 @@
                         setError('No data to send.');
                         return;
                     }
+                    const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
                     const csvContent = [
                         'Block,Number of Events,Remarks',
                         ...savedData.map(item => 
                             `${item.block},${item.events},"${(item.remarks || '').replace(/"/g, '""')}"`
-                        )
+                        ),
+                        `Total,${totalEvents},`
                     ].join('\n');
                     
                     const response = await fetch(`${SERVER_URL}/send-csv`, {
@@ -191,12 +193,14 @@
                     console.log('CSV sent and downloaded successfully');
                 } catch (err) {
                     console.error('Send error:', err);
-                    setError('CSV Downloaded. CSV downloaded locally. Please manually email to nopacdang@gmail.com.');
+                    setError('Failed to send CSV. CSV downloaded locally. Please manually email to nopacdang@gmail.com.');
+                    const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
                     const csvContent = [
                         'Block,Number of Events,Remarks',
                         ...savedData.map(item => 
                             `${item.block},${item.events},"${(item.remarks || '').replace(/"/g, '""')}"`
-                        )
+                        ),
+                        `Total,${totalEvents},`
                     ].join('\n');
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
@@ -209,7 +213,7 @@
                 }
             };
 
-            const totalEvents = savedData.reduce((sum, item) => sum + Number(item.events), 0);
+            const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
 
             return (
                 <div className="container mx-auto p-4 max-w-2xl">
@@ -287,7 +291,7 @@
                                                 <td className="px-6 py-4">{item.remarks}</td>
                                             </tr>
                                         ))}
-                                        <tr className="bg-gray-100 font-bold">
+                                        <tr className="font-bold">
                                             <td className="px-6 py-4 whitespace-nowrap">Total</td>
                                             <td className="px-6 py-4 whitespace-nowrap">{totalEvents}</td>
                                             <td className="px-6 py-4"></td>
