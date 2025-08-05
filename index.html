@@ -58,7 +58,7 @@
                 'Shahabad', 'Shangus', 'Verinag', 'Vessu'
             ];
             const eventNumbers = Array.from({length: 16}, (_, i) => i);
-            const ADMIN_PASSWORD = '7894Zee';
+            const SERVER_URL = 'https://event-server-hkf7.onrender.com';
 
             const [formData, setFormData] = React.useState({
                 block: blocks[0],
@@ -70,22 +70,22 @@
             const [isAdmin, setIsAdmin] = React.useState(false);
             const [passwordInput, setPasswordInput] = React.useState('');
 
-            // Load data from localStorage on mount
+            // Fetch data from server on mount
             React.useEffect(() => {
-                const saved = localStorage.getItem('eventData');
-                if (saved) {
-                    setSavedData(JSON.parse(saved));
-                    console.log('Data loaded from localStorage:', JSON.parse(saved));
-                }
+                const fetchData = async () => {
+                    try {
+                        const response = await fetch(`${SERVER_URL}/data`);
+                        if (!response.ok) throw new Error('Failed to fetch data');
+                        const data = await response.json();
+                        setSavedData(data);
+                        console.log('Data fetched from server:', data);
+                    } catch (err) {
+                        console.error('Fetch error:', err);
+                        setError('Failed to load data from server. Please try again.');
+                    }
+                };
+                fetchData();
             }, []);
-
-            // Save data to localStorage
-            React.useEffect(() => {
-                if (savedData.length > 0) {
-                    localStorage.setItem('eventData', JSON.stringify(savedData));
-                    console.log('Data saved to localStorage:', savedData);
-                }
-            }, [savedData]);
 
             const handleInputChange = (e) => {
                 const { name, value } = e.target;
@@ -97,71 +97,102 @@
                 setPasswordInput(e.target.value);
             };
 
-            const handleAdminLogin = () => {
-                if (passwordInput === ADMIN_PASSWORD) {
+            const handleAdminLogin = async () => {
+                try {
+                    const response = await fetch(`${SERVER_URL}/admin-login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: passwordInput })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Login failed');
                     setIsAdmin(true);
                     setError(null);
+                    setPasswordInput('');
                     console.log('Admin login successful');
-                } else {
+                } catch (err) {
+                    console.error('Login error:', err);
                     setError('Incorrect password. Please try again.');
-                    console.log('Admin login failed');
                 }
             };
 
-            const handleSave = () => {
-                if (savedData.some(item => item.block === formData.block)) {
-                    setError(`Data for block ${formData.block} already exists`);
-                    console.log('Save blocked: Block already exists:', formData.block);
-                    return;
+            const handleSave = async () => {
+                try {
+                    const response = await fetch(`${SERVER_URL}/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Failed to save data');
+                    setSavedData(result);
+                    setFormData({
+                        block: blocks[0],
+                        events: 0,
+                        remarks: ''
+                    });
+                    setError(null);
+                    console.log('Data saved to server:', formData);
+                } catch (err) {
+                    console.error('Save error:', err);
+                    setError(err.message || 'Failed to save data. Please try again.');
                 }
-                setSavedData([...savedData, formData]);
-                setFormData({
-                    block: blocks[0],
-                    events: 0,
-                    remarks: ''
-                });
-                setError(null);
-                console.log('Data saved:', formData);
             };
 
-            const handleClearData = () => {
-                if (passwordInput !== ADMIN_PASSWORD) {
-                    setError('Incorrect password for clearing data.');
-                    return;
+            const handleClearData = async () => {
+                try {
+                    const response = await fetch(`${SERVER_URL}/clear-data`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: passwordInput })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Failed to clear data');
+                    setSavedData([]);
+                    localStorage.removeItem('eventData');
+                    setError('All data cleared successfully.');
+                    console.log('Data cleared successfully');
+                } catch (err) {
+                    console.error('Clear data error:', err);
+                    setError('Failed to clear data. Incorrect password or server error.');
                 }
-                setSavedData([]);
-                localStorage.removeItem('eventData');
-                setError('All data cleared successfully.');
-                console.log('Data cleared');
-                setPasswordInput(''); // Clear password input after action
             };
 
-            const handleDownload = () => {
-                if (passwordInput !== ADMIN_PASSWORD) {
-                    setError('Incorrect password for downloading CSV.');
-                    return;
+            const handleDownload = async () => {
+                try {
+                    if (savedData.length === 0) {
+                        setError('No data to send.');
+                        return;
+                    }
+                    const response = await fetch(`${SERVER_URL}/send-csv`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: passwordInput, data: savedData })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Failed to send CSV');
+
+                    const csvContent = [
+                        'Block,Number of Events,Remarks',
+                        ...savedData.map(item => 
+                            `${item.block},${item.events},"${item.remarks.replace(/"/g, '""')}"`
+                        )
+                    ].join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'event_details.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    setError(result.message + ' Also, please manually attach the downloaded CSV to an email to nopacdang@gmail.com if server email failed.');
+                    console.log('CSV sent and downloaded successfully');
+                } catch (err) {
+                    console.error('Send error:', err);
+                    setError('Failed to send CSV. Please download and manually email to nopacdang@gmail.com.');
                 }
-                if (savedData.length === 0) {
-                    setError('No data to download.');
-                    return;
-                }
-                const csvContent = [
-                    'Block,Number of Events,Remarks',
-                    ...savedData.map(item => 
-                        `${item.block},${item.events},"${item.remarks.replace(/"/g, '""')}"`
-                    )
-                ].join('\n');
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', 'event_details.csv');
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                setError('CSV downloaded. Please manually email to nopacdang@gmail.com.');
-                console.log('CSV downloaded');
-                setPasswordInput(''); // Clear password input after action
             };
 
             return (
@@ -244,24 +275,24 @@
                                 </table>
                             </div>
 
-                            <div className="mt-4">
-                                <label className="block text-sm font-medium text-gray-700">Admin Password</label>
-                                <input
-                                    type="password"
-                                    value={passwordInput}
-                                    onChange={handlePasswordChange}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                    placeholder="Enter admin password"
-                                />
-                                {!isAdmin && (
+                            {!isAdmin && (
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700">Admin Password</label>
+                                    <input
+                                        type="password"
+                                        value={passwordInput}
+                                        onChange={handlePasswordChange}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                        placeholder="Enter admin password"
+                                    />
                                     <button
                                         onClick={handleAdminLogin}
                                         className="w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mt-2"
                                     >
                                         Login as Admin
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
                             {isAdmin && (
                                 <div className="mt-4 space-y-2">
