@@ -163,20 +163,21 @@
                         setError('No data to send.');
                         return;
                     }
+                    const csvContent = [
+                        'Block,Number of Events,Remarks',
+                        ...savedData.map(item => 
+                            `${item.block},${item.events},"${(item.remarks || '').replace(/"/g, '""')}"`
+                        )
+                    ].join('\n');
+                    
                     const response = await fetch(`${SERVER_URL}/send-csv`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ password: passwordInput, data: savedData })
+                        body: JSON.stringify({ password: passwordInput, csvContent })
                     });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.error || 'Failed to send CSV');
 
-                    const csvContent = [
-                        'Block,Number of Events,Remarks',
-                        ...savedData.map(item => 
-                            `${item.block},${item.events},"${item.remarks.replace(/"/g, '""')}"`
-                        )
-                    ].join('\n');
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
                     const url = URL.createObjectURL(blob);
@@ -190,7 +191,21 @@
                     console.log('CSV sent and downloaded successfully');
                 } catch (err) {
                     console.error('Send error:', err);
-                    setError('Failed to send CSV. Please download and manually email to nopacdang@gmail.com.');
+                    setError('Failed to send CSV. CSV downloaded locally. Please manually email to nopacdang@gmail.com.');
+                    const csvContent = [
+                        'Block,Number of Events,Remarks',
+                        ...savedData.map(item => 
+                            `${item.block},${item.events},"${(item.remarks || '').replace(/"/g, '""')}"`
+                        )
+                    ].join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'event_details.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                 }
             };
 
