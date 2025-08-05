@@ -108,7 +108,6 @@
                     if (!response.ok) throw new Error(result.error || 'Login failed');
                     setIsAdmin(true);
                     setError(null);
-                    setPasswordInput('');
                     console.log('Admin login successful');
                 } catch (err) {
                     console.error('Login error:', err);
@@ -275,24 +274,24 @@
                                 </table>
                             </div>
 
-                            {!isAdmin && (
-                                <div className="mt-4">
-                                    <label className="block text-sm font-medium text-gray-700">Admin Password</label>
-                                    <input
-                                        type="password"
-                                        value={passwordInput}
-                                        onChange={handlePasswordChange}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                        placeholder="Enter admin password"
-                                    />
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700">Admin Password</label>
+                                <input
+                                    type="password"
+                                    value={passwordInput}
+                                    onChange={handlePasswordChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                    placeholder="Enter admin password"
+                                />
+                                {!isAdmin && (
                                     <button
                                         onClick={handleAdminLogin}
                                         className="w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mt-2"
                                     >
                                         Login as Admin
                                     </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             {isAdmin && (
                                 <div className="mt-4 space-y-2">
