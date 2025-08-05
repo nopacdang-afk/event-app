@@ -42,7 +42,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Details Entry</title>
+    <title>RDD-HGT</title>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.22.10/babel.min.js"></script>
@@ -191,7 +191,7 @@
                     console.log('CSV sent and downloaded successfully');
                 } catch (err) {
                     console.error('Send error:', err);
-                    setError('Failed to send CSV. CSV downloaded locally. Please manually email to nopacdang@gmail.com.');
+                    setError('CSV Downloaded. CSV downloaded locally. Please manually email to nopacdang@gmail.com.');
                     const csvContent = [
                         'Block,Number of Events,Remarks',
                         ...savedData.map(item => 
@@ -213,7 +213,7 @@
 
             return (
                 <div className="container mx-auto p-4 max-w-2xl">
-                    <h1 className="text-2xl font-bold mb-4">Event Details Entry</h1>
+                    <h1 className="text-2xl font-bold mb-4">Har Ghar Tiranga Event Details of RDD Anantnag (03-08-2025 to 08-08-2025)</h1>
                     
                     {error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
