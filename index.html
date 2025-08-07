@@ -284,17 +284,10 @@
                 try {
                     if (savedData.length === 0) {
                         setError('No data to send.');
+                        console.log('No data available for CSV download');
                         return;
                     }
                     const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
-                    const response = await fetch(`${SERVER_URL}/send-csv`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ password: passwordInput, data: savedData, totalEvents })
-                    });
-                    const result = await response.json();
-                    if (!response.ok) throw new Error(result.error || 'Failed to send CSV');
-
                     const csvContent = [
                         'Block,Number of Events,Remarks',
                         ...savedData.map(item => 
@@ -302,21 +295,43 @@
                         ),
                         `Total Events,${totalEvents},`
                     ].join('\n');
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute('href', url);
-                    link.setAttribute('download', 'har_ghar_tiranga.csv');
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+
+                    // Attempt server-side email
+                    const response = await fetch(`${SERVER_URL}/send-csv`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: passwordInput, data: savedData, totalEvents })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.error || `Server responded with ${response.status}`);
+                    }
+
+                    // Create and trigger CSV download
+                    try {
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'har_ghar_tiranga.csv';
+                        document.body.appendChild(link);
+                        link.click();
+                        setTimeout(() => {
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                        }, 100);
+                        console.log('CSV download triggered successfully');
+                    } catch (downloadErr) {
+                        console.error('Download error:', downloadErr);
+                        throw new Error('Failed to trigger CSV download');
+                    }
 
                     setError(result.message + ' Also, please manually attach the downloaded CSV to an email to nopacdang@gmail.com if server email failed.');
                     setPasswordInput('');
-                    console.log('CSV sent and downloaded successfully');
+                    console.log('CSV sent to server and downloaded successfully');
                 } catch (err) {
-                    console.error('Send error:', err);
-                    setError('Failed to send CSV. Please check password or server status.');
+                    console.error('Download or send error:', err);
+                    setError(`Failed to download or send CSV: ${err.message}. Please try again or manually save the data.`);
                 }
             };
 
