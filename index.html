@@ -154,6 +154,15 @@
             background: #f1f5f9;
             font-weight: 600;
         }
+        .photo-preview {
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .photo-preview:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s ease;
+        }
     </style>
 </head>
 <body>
@@ -168,7 +177,6 @@
                 'Shahabad', 'Shangus', 'Verinag', 'Vessu'
             ];
             const eventNumbers = Array.from({length: 16}, (_, i) => i);
-            // Replace with your Render server URL after deployment, e.g., 'https://your-app.onrender.com'
             const SERVER_URL = 'https://event-server-hkf7.onrender.com';
 
             const [formData, setFormData] = React.useState({
@@ -180,6 +188,8 @@
             const [error, setError] = React.useState(null);
             const [isAdmin, setIsAdmin] = React.useState(false);
             const [passwordInput, setPasswordInput] = React.useState('');
+            const [selectedPhotos, setSelectedPhotos] = React.useState([]);
+            const [uploadedPhotos, setUploadedPhotos] = React.useState([]);
 
             React.useEffect(() => {
                 const fetchData = async () => {
@@ -209,6 +219,77 @@
 
             const handlePasswordChange = (e) => {
                 setPasswordInput(e.target.value);
+            };
+
+            const handlePhotoChange = (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 15) {
+                    setError('Maximum 15 photos allowed.');
+                    e.target.value = '';
+                    return;
+                }
+                const validFiles = files.filter(file => 
+                    ['image/jpeg', 'image/png'].includes(file.type)
+                );
+                if (validFiles.length !== files.length) {
+                    setError('Only JPEG and PNG files are allowed.');
+                    e.target.value = '';
+                    return;
+                }
+                setSelectedPhotos(validFiles.map(file => ({
+                    file,
+                    url: URL.createObjectURL(file)
+                })));
+                setError(null);
+                console.log('Selected photos:', validFiles.map(f => f.name));
+            };
+
+            const removePhoto = (index) => {
+                setSelectedPhotos(prev => {
+                    const newPhotos = prev.filter((_, i) => i !== index);
+                    prev.forEach(({ url }) => URL.revokeObjectURL(url));
+                    return newPhotos;
+                });
+                console.log('Photo removed at index:', index);
+            };
+
+            const handlePhotoUpload = async () => {
+                if (!isAdmin) {
+                    setError('Please log in as admin to upload photos.');
+                    return;
+                }
+                if (selectedPhotos.length === 0) {
+                    setError('No photos selected.');
+                    return;
+                }
+                try {
+                    const formData = new FormData();
+                    selectedPhotos.forEach(({ file }) => {
+                        formData.append('photos', file);
+                    });
+                    formData.append('password', passwordInput);
+
+                    const response = await fetch(`${SERVER_URL}/upload-photos`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const text = await response.text();
+                    if (!response.ok) {
+                        console.error('Upload photos response:', text);
+                        throw new Error(`Upload failed: ${response.status} ${response.statusText}. Response: ${text.substring(0, 50)}...`);
+                    }
+                    const result = JSON.parse(text);
+                    setUploadedPhotos(prev => [...prev, ...result.filenames]);
+                    setSelectedPhotos(prev => {
+                        prev.forEach(({ url }) => URL.revokeObjectURL(url));
+                        return [];
+                    });
+                    setError('Photos uploaded successfully.');
+                    console.log('Photos uploaded:', result.filenames);
+                } catch (err) {
+                    console.error('Upload photos error:', err);
+                    setError(`Failed to upload photos: ${err.message}. Please try again.`);
+                }
             };
 
             const handleAdminLogin = async () => {
@@ -270,8 +351,9 @@
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.error || 'Failed to clear data');
                     setSavedData([]);
+                    setUploadedPhotos([]);
                     localStorage.removeItem('eventData');
-                    setError('All data cleared successfully.');
+                    setError('All data and photos cleared successfully.');
                     setPasswordInput('');
                     console.log('Data cleared successfully');
                 } catch (err) {
@@ -289,14 +371,14 @@
                     }
                     const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
                     const csvContent = [
-                        'Block,Number of Events,Remarks',
+                        'Block,Number of Events,Remarks,Photos',
                         ...savedData.map(item => 
-                            `${item.block},${item.events},"${item.remarks.replace(/"/g, '""')}"`
+                            `${item.block},${item.events},"${item.remarks.replace(/"/g, '""')}","${(item.photos || []).join(',')}"`
                         ),
-                        `Total Events,${totalEvents},`
+                        `Total Events,${totalEvents},,`
                     ].join('\n');
 
-                    // Trigger CSV download regardless of server response
+                    // Trigger CSV download
                     try {
                         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                         const url = window.URL.createObjectURL(blob);
@@ -323,7 +405,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ password: passwordInput, data: savedData, totalEvents })
                         });
-                        const text = await response.text(); // Get raw response to debug
+                        const text = await response.text();
                         if (!response.ok) {
                             console.error('Server response:', text);
                             throw new Error(`Server error: ${response.status} ${response.statusText}. Response: ${text.substring(0, 50)}...`);
@@ -414,9 +496,45 @@
                             >
                                 <i className="fas fa-save mr-2"></i> Save Entry
                             </button>
+
+                            <div className="relative">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i className="fas fa-camera mr-2 text-purple-500"></i> Upload Photos (Max 15, JPEG/PNG)
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png"
+                                    multiple
+                                    onChange={handlePhotoChange}
+                                    className="input-focus block w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 p-4 text-gray-700"
+                                />
+                                {selectedPhotos.length > 0 && (
+                                    <div className="mt-4 grid grid-cols-3 gap-4">
+                                        {selectedPhotos.map((photo, index) => (
+                                            <div key={index} className="relative">
+                                                <img src={photo.url} alt={`Preview ${index}`} className="photo-preview w-full h-24 object-cover" />
+                                                <button
+                                                    onClick={() => removePhoto(index)}
+                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                                                >
+                                                    <i className="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {selectedPhotos.length > 0 && (
+                                    <button
+                                        onClick={handlePhotoUpload}
+                                        className="button w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-semibold py-4 px-6 rounded-lg mt-4 flex items-center justify-center"
+                                    >
+                                        <i className="fas fa-upload mr-2"></i> Upload Photos
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        {savedData.length > 0 && (
+                        {savedData.length > 0 || uploadedPhotos.length > 0 ? (
                             <div className="mt-10">
                                 <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
                                     <i className="fas fa-table mr-2 text-blue-600"></i> Saved Data
@@ -428,6 +546,7 @@
                                                 <th className="px-6 py-4 text-left text-sm font-semibold">Block</th>
                                                 <th className="px-6 py-4 text-left text-sm font-semibold">Events</th>
                                                 <th className="px-6 py-4 text-left text-sm font-semibold">Remarks</th>
+                                                <th className="px-6 py-4 text-left text-sm font-semibold">Photos</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -436,16 +555,29 @@
                                                     <td className="px-6 py-4 whitespace-nowrap text-gray-700">{item.block}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-gray-700">{item.events}</td>
                                                     <td className="px-6 py-4 text-gray-700">{item.remarks}</td>
+                                                    <td className="px-6 py-4 text-gray-700">{(item.photos || []).join(', ')}</td>
                                                 </tr>
                                             ))}
                                             <tr className="total-row">
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-semibold">Total Events</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-semibold">{totalEvents}</td>
                                                 <td className="px-6 py-4"></td>
+                                                <td className="px-6 py-4"></td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {uploadedPhotos.length > 0 && (
+                                    <div className="mt-6">
+                                        <h3 className="text-lg font-semibold text-gray-700 mb-2">Uploaded Photos</h3>
+                                        <ul className="list-disc pl-5 text-gray-700">
+                                            {uploadedPhotos.map((photo, index) => (
+                                                <li key={index}>{photo}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
 
                                 <div className="mt-8">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
@@ -493,7 +625,7 @@
                                     </div>
                                 )}
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
             );
