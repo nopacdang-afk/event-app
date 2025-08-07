@@ -169,7 +169,7 @@
             ];
             const eventNumbers = Array.from({length: 16}, (_, i) => i);
             // Replace with your Render server URL after deployment, e.g., 'https://your-app.onrender.com'
-            const SERVER_URL = 'https://event-server-hkf7.onrender.com';
+            const SERVER_URL = 'http://localhost:3000';
 
             const [formData, setFormData] = React.useState({
                 block: blocks[0],
@@ -296,18 +296,7 @@
                         `Total Events,${totalEvents},`
                     ].join('\n');
 
-                    // Attempt server-side email
-                    const response = await fetch(`${SERVER_URL}/send-csv`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ password: passwordInput, data: savedData, totalEvents })
-                    });
-                    const result = await response.json();
-                    if (!response.ok) {
-                        throw new Error(result.error || `Server responded with ${response.status}`);
-                    }
-
-                    // Create and trigger CSV download
+                    // Trigger CSV download regardless of server response
                     try {
                         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                         const url = window.URL.createObjectURL(blob);
@@ -323,15 +312,34 @@
                         console.log('CSV download triggered successfully');
                     } catch (downloadErr) {
                         console.error('Download error:', downloadErr);
-                        throw new Error('Failed to trigger CSV download');
+                        setError('Failed to trigger CSV download. Please try again or manually save the data.');
+                        return;
                     }
 
-                    setError(result.message + ' Also, please manually attach the downloaded CSV to an email to nopacdang@gmail.com if server email failed.');
+                    // Attempt server-side email
+                    try {
+                        const response = await fetch(`${SERVER_URL}/send-csv`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password: passwordInput, data: savedData, totalEvents })
+                        });
+                        const text = await response.text(); // Get raw response to debug
+                        if (!response.ok) {
+                            console.error('Server response:', text);
+                            throw new Error(`Server error: ${response.status} ${response.statusText}. Response: ${text.substring(0, 50)}...`);
+                        }
+                        const result = JSON.parse(text);
+                        setError(result.message + ' Also, please manually attach the downloaded CSV to an email to nopacdang@gmail.com if server email failed.');
+                        console.log('CSV sent to server successfully');
+                    } catch (serverErr) {
+                        console.error('Server error:', serverErr);
+                        setError(`CSV downloaded successfully, but failed to send email: ${serverErr.message}. Please manually attach the downloaded CSV to an email to nopacdang@gmail.com.`);
+                    }
+
                     setPasswordInput('');
-                    console.log('CSV sent to server and downloaded successfully');
                 } catch (err) {
                     console.error('Download or send error:', err);
-                    setError(`Failed to download or send CSV: ${err.message}. Please try again or manually save the data.`);
+                    setError(`Failed to process CSV: ${err.message}. The CSV was downloaded; please manually attach it to an email to nopacdang@gmail.com.`);
                 }
             };
 
