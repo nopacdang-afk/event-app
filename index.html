@@ -42,13 +42,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RDD-HGT</title>
+    <title>Har Ghar Tiranga Event Details</title>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.22.10/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        body {
+            background: linear-gradient(135deg, #ff9933 0%, #ffffff 50%, #138808 100%);
+            min-height: 100vh;
+            font-family: 'Poppins', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 1.5rem;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        }
+        .input-focus {
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .input-focus:focus {
+            border-color: #ff9933;
+            box-shadow: 0 0 0 4px rgba(255, 153, 51, 0.3);
+            background: white;
+        }
+        .button {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        .button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300%;
+            height: 300%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.5s ease;
+            border-radius: 50%;
+        }
+        .button:hover::after {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .table-header {
+            background: linear-gradient(to right, #ff9933, #138808);
+            color: white;
+        }
+        .table-row {
+            transition: background 0.2s ease;
+        }
+        .table-row:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .flag-icon {
+            animation: wave 2s infinite ease-in-out;
+        }
+        @keyframes wave {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(10deg); }
+        }
+        .bg-decoration {
+            position: absolute;
+            opacity: 0.1;
+            z-index: -1;
+        }
+        .bg-flag {
+            background: url('https://upload.wikimedia.org/wikipedia/en/thumb/4/41/Flag_of_India.svg/1200px-Flag_of_India.svg.png') no-repeat center;
+            background-size: contain;
+            width: 200px;
+            height: 133px;
+            top: 10%;
+            left: 5%;
+            animation: float 6s ease-in-out infinite;
+        }
+        .bg-chakra {
+            background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Ashoka_Chakra.svg/1200px-Ashoka_Chakra.svg.png') no-repeat center;
+            background-size: contain;
+            width: 150px;
+            height: 150px;
+            bottom: 10%;
+            right: 5%;
+            animation: spin 20s linear infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
+    <div class="bg-decoration bg-flag"></div>
+    <div class="bg-decoration bg-chakra"></div>
     <div id="root"></div>
     <script type="text/babel">
         function App() {
@@ -58,7 +164,8 @@
                 'Shahabad', 'Shangus', 'Verinag', 'Vessu'
             ];
             const eventNumbers = Array.from({length: 16}, (_, i) => i);
-            const SERVER_URL = 'https://event-server-hkf7.onrender.com';
+            // Replace with your Render server URL after deployment, e.g., 'https://your-app.onrender.com'
+            const SERVER_URL = 'http://localhost:3000';
 
             const [formData, setFormData] = React.useState({
                 block: blocks[0],
@@ -70,18 +177,21 @@
             const [isAdmin, setIsAdmin] = React.useState(false);
             const [passwordInput, setPasswordInput] = React.useState('');
 
-            // Fetch data from server on mount
             React.useEffect(() => {
                 const fetchData = async () => {
                     try {
-                        const response = await fetch(`${SERVER_URL}/data`);
-                        if (!response.ok) throw new Error('Failed to fetch data');
+                        const response = await fetch(`${SERVER_URL}/data`, {
+                            mode: 'cors'
+                        });
+                        if (!response.ok) {
+                            throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+                        }
                         const data = await response.json();
                         setSavedData(data);
                         console.log('Data fetched from server:', data);
                     } catch (err) {
                         console.error('Fetch error:', err);
-                        setError('Failed to load data from server. Please try again.');
+                        setError('Failed to load data from server. Please check if the server is running or contact support.');
                     }
                 };
                 fetchData();
@@ -108,6 +218,7 @@
                     if (!response.ok) throw new Error(result.error || 'Login failed');
                     setIsAdmin(true);
                     setError(null);
+                    setPasswordInput('');
                     console.log('Admin login successful');
                 } catch (err) {
                     console.error('Login error:', err);
@@ -163,28 +274,25 @@
                         setError('No data to send.');
                         return;
                     }
-                    const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
-                    const csvContent = [
-                        'Block,Number of Events,Remarks',
-                        ...savedData.map(item => 
-                            `${item.block},${item.events},"${(item.remarks || '').replace(/"/g, '""')}"`
-                        ),
-                        `Total,${totalEvents},`
-                    ].join('\n');
-                    
                     const response = await fetch(`${SERVER_URL}/send-csv`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ password: passwordInput, csvContent })
+                        body: JSON.stringify({ password: passwordInput, data: savedData })
                     });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.error || 'Failed to send CSV');
 
+                    const csvContent = [
+                        'Block,Number of Events,Remarks',
+                        ...savedData.map(item => 
+                            `${item.block},${item.events},"${item.remarks.replace(/"/g, '""')}"`
+                        )
+                    ].join('\n');
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
                     const url = URL.createObjectURL(blob);
                     link.setAttribute('href', url);
-                    link.setAttribute('download', 'event_details.csv');
+                    link.setAttribute('download', 'har_ghar_tiranga.csv');
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -193,150 +301,147 @@
                     console.log('CSV sent and downloaded successfully');
                 } catch (err) {
                     console.error('Send error:', err);
-                    setError('Failed to send CSV. CSV downloaded locally. Please manually email to nopacdang@gmail.com.');
-                    const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
-                    const csvContent = [
-                        'Block,Number of Events,Remarks',
-                        ...savedData.map(item => 
-                            `${item.block},${item.events},"${(item.remarks || '').replace(/"/g, '""')}"`
-                        ),
-                        `Total,${totalEvents},`
-                    ].join('\n');
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute('href', url);
-                    link.setAttribute('download', 'event_details.csv');
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    setError('Failed to send CSV. Please download and manually email to nopacdang@gmail.com.');
                 }
             };
 
-            const totalEvents = savedData.reduce((sum, item) => sum + parseInt(item.events), 0);
-
             return (
-                <div className="container mx-auto p-4 max-w-2xl">
-                    <h1 className="text-2xl font-bold mb-4">Har Ghar Tiranga Event Details of RDD Anantnag (03-08-2025 to 08-08-2025)</h1>
-                    
-                    {error && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                            {error}
-                        </div>
-                    )}
+                <div className="min-h-screen flex items-center justify-center p-6">
+                    <div className="card max-w-4xl w-full p-10">
+                        <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center flex items-center justify-center">
+                            <i className="fas fa-flag flag-icon text-3xl mr-3 text-orange-600"></i>
+                            Har Ghar Tiranga Event Details
+                            <i className="fas fa-flag flag-icon text-3xl ml-3 text-green-600"></i>
+                        </h1>
+                        
+                        {error && (
+                            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-8 flex items-center animate-pulse">
+                                <i className="fas fa-exclamation-circle mr-3 text-red-500"></i>
+                                {error}
+                            </div>
+                        )}
 
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700">Block</label>
-                        <select 
-                            name="block"
-                            value={formData.block}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                        >
-                            {blocks.map(block => (
-                                <option key={block} value={block}>{block}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700">Number of Events</label>
-                        <select 
-                            name="events"
-                            value={formData.events}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                        >
-                            {eventNumbers.map(num => (
-                                <option key={num} value={num}>{num}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700">Remarks</label>
-                        <textarea
-                            name="remarks"
-                            value={formData.remarks}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                            rows="4"
-                        ></textarea>
-                    </div>
-
-                    <button
-                        onClick={handleSave}
-                        className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
-                    >
-                        Save
-                    </button>
-
-                    {savedData.length > 0 && (
-                        <div>
-                            <h2 className="text-xl font-semibold mb-2">Saved Data</h2>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Block</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Events</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {savedData.map((item, index) => (
-                                            <tr key={index}>
-                                                <td className="px-6 py-4 whitespace-nowrap">{item.block}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap">{item.events}</td>
-                                                <td className="px-6 py-4">{item.remarks}</td>
-                                            </tr>
-                                        ))}
-                                        <tr className="font-bold">
-                                            <td className="px-6 py-4 whitespace-nowrap">Total</td>
-                                            <td className="px-6 py-4 whitespace-nowrap">{totalEvents}</td>
-                                            <td className="px-6 py-4"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                        <div className="space-y-8">
+                            <div className="relative">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i className="fas fa-map-marker-alt mr-2 text-orange-500"></i> Block
+                                </label>
+                                <select 
+                                    name="block"
+                                    value={formData.block}
+                                    onChange={handleInputChange}
+                                    className="input-focus block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 focus:ring-opacity-50 p-4 text-gray-700"
+                                >
+                                    {blocks.map(block => (
+                                        <option key={block} value={block}>{block}</option>
+                                    ))}
+                                </select>
                             </div>
 
-                            <div className="mt-4">
-                                <label className="block text-sm font-medium text-gray-700">Admin Password</label>
-                                <input
-                                    type="password"
-                                    value={passwordInput}
-                                    onChange={handlePasswordChange}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                    placeholder="Enter admin password"
-                                />
+                            <div className="relative">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i className="fas fa-calendar-check mr-2 text-green-500"></i> Number of Events
+                                </label>
+                                <select 
+                                    name="events"
+                                    value={formData.events}
+                                    onChange={handleInputChange}
+                                    className="input-focus block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 p-4 text-gray-700"
+                                >
+                                    {eventNumbers.map(num => (
+                                        <option key={num} value={num}>{num}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="relative">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i className="fas fa-comment-alt mr-2 text-blue-500"></i> Remarks
+                                </label>
+                                <textarea
+                                    name="remarks"
+                                    value={formData.remarks}
+                                    onChange={handleInputChange}
+                                    className="input-focus block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-4 text-gray-700"
+                                    rows="5"
+                                    placeholder="Enter your remarks..."
+                                ></textarea>
+                            </div>
+
+                            <button
+                                onClick={handleSave}
+                                className="button w-full bg-gradient-to-r from-orange-500 to-green-500 hover:from-orange-600 hover:to-green-600 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center"
+                            >
+                                <i className="fas fa-save mr-2"></i> Save Entry
+                            </button>
+                        </div>
+
+                        {savedData.length > 0 && (
+                            <div className="mt-10">
+                                <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+                                    <i className="fas fa-table mr-2 text-blue-600"></i> Saved Data
+                                </h2>
+                                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="table-header">
+                                            <tr>
+                                                <th className="px-6 py-4 text-left text-sm font-semibold">Block</th>
+                                                <th className="px-6 py-4 text-left text-sm font-semibold">Events</th>
+                                                <th className="px-6 py-4 text-left text-sm font-semibold">Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {savedData.map((item, index) => (
+                                                <tr key={index} className="table-row">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-700">{item.block}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-700">{item.events}</td>
+                                                    <td className="px-6 py-4 text-gray-700">{item.remarks}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
                                 {!isAdmin && (
-                                    <button
-                                        onClick={handleAdminLogin}
-                                        className="w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mt-2"
-                                    >
-                                        Login as Admin
-                                    </button>
+                                    <div className="mt-8">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                            <i className="fas fa-lock mr-2 text-gray-500"></i> Admin Password
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={passwordInput}
+                                            onChange={handlePasswordChange}
+                                            className="input-focus block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-4 text-gray-700"
+                                            placeholder="Enter admin password"
+                                        />
+                                        <button
+                                            onClick={handleAdminLogin}
+                                            className="button w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-4 px-6 rounded-lg mt-4 flex items-center justify-center"
+                                        >
+                                            <i className="fas fa-sign-in-alt mr-2"></i> Login as Admin
+                                        </button>
+                                    </div>
+                                )}
+
+                                {isAdmin && (
+                                    <div className="mt-8 space-y-4">
+                                        <button
+                                            onClick={handleDownload}
+                                            className="button w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center"
+                                        >
+                                            <i className="fas fa-download mr-2"></i> Download CSV and Email
+                                        </button>
+                                        <button
+                                            onClick={handleClearData}
+                                            className="button w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center"
+                                        >
+                                            <i className="fas fa-trash-alt mr-2"></i> Clear All Data
+                                        </button>
+                                    </div>
                                 )}
                             </div>
-
-                            {isAdmin && (
-                                <div className="mt-4 space-y-2">
-                                    <button
-                                        onClick={handleDownload}
-                                        className="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-                                    >
-                                        Download CSV and Email
-                                    </button>
-                                    <button
-                                        onClick={handleClearData}
-                                        className="w-full bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                                    >
-                                        Clear All Data
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             );
         }
