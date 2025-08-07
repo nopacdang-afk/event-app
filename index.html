@@ -165,7 +165,7 @@
             ];
             const eventNumbers = Array.from({length: 16}, (_, i) => i);
             // Replace with your Render server URL after deployment, e.g., 'https://your-app.onrender.com'
-            const SERVER_URL = 'https://event-server-hkf7.onrender.com';
+            const SERVER_URL = 'http://localhost:3000';
 
             const [formData, setFormData] = React.useState({
                 block: blocks[0],
@@ -226,6 +226,13 @@
                 }
             };
 
+            const handleLogout = () => {
+                setIsAdmin(false);
+                setPasswordInput('');
+                setError(null);
+                console.log('Admin logged out');
+            };
+
             const handleSave = async () => {
                 try {
                     const response = await fetch(`${SERVER_URL}/save`, {
@@ -261,6 +268,7 @@
                     setSavedData([]);
                     localStorage.removeItem('eventData');
                     setError('All data cleared successfully.');
+                    setPasswordInput('');
                     console.log('Data cleared successfully');
                 } catch (err) {
                     console.error('Clear data error:', err);
@@ -298,10 +306,11 @@
                     document.body.removeChild(link);
 
                     setError(result.message + ' Also, please manually attach the downloaded CSV to an email to nopacdang@gmail.com if server email failed.');
+                    setPasswordInput('');
                     console.log('CSV sent and downloaded successfully');
                 } catch (err) {
                     console.error('Send error:', err);
-                    setError('Failed to send CSV. Please download and manually email to nopacdang@gmail.com.');
+                    setError('Failed to send CSV. Please check password or server status.');
                 }
             };
 
@@ -402,26 +411,34 @@
                                     </table>
                                 </div>
 
-                                {!isAdmin && (
-                                    <div className="mt-8">
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                                            <i className="fas fa-lock mr-2 text-gray-500"></i> Admin Password
-                                        </label>
-                                        <input
-                                            type="password"
-                                            value={passwordInput}
-                                            onChange={handlePasswordChange}
-                                            className="input-focus block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-4 text-gray-700"
-                                            placeholder="Enter admin password"
-                                        />
+                                <div className="mt-8">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                        <i className="fas fa-lock mr-2 text-gray-500"></i> Admin Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={passwordInput}
+                                        onChange={handlePasswordChange}
+                                        className="input-focus block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-4 text-gray-700"
+                                        placeholder="Enter admin password"
+                                    />
+                                    {!isAdmin && (
                                         <button
                                             onClick={handleAdminLogin}
                                             className="button w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-4 px-6 rounded-lg mt-4 flex items-center justify-center"
                                         >
                                             <i className="fas fa-sign-in-alt mr-2"></i> Login as Admin
                                         </button>
-                                    </div>
-                                )}
+                                    )}
+                                    {isAdmin && (
+                                        <button
+                                            onClick={handleLogout}
+                                            className="button w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 px-6 rounded-lg mt-4 flex items-center justify-center"
+                                        >
+                                            <i className="fas fa-sign-out-alt mr-2"></i> Logout
+                                        </button>
+                                    )}
+                                </div>
 
                                 {isAdmin && (
                                     <div className="mt-8 space-y-4">
